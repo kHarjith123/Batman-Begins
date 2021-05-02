@@ -1,77 +1,111 @@
-const Engine = Matter.Engine;
-const World = Matter.World;
-const Bodies = Matter.Bodies;
+var dog,sadDog,happyDog, database;
+var foodS,foodStock;
+var addFood;
+var foodObj;
 
-var engine, world;
-var drops = [];
-var lightning;
 
-var maxDrops=100;
-
-var lightningframe = 0;
+//create feed and lastFed variable here
+var feed , lastFed ;
 
 
 function preload(){
+sadDog=loadImage("Dog.png");
+happyDog=loadImage("happy dog.png");
+}
 
-    lightning1 = loadImage("1.png");
-    lightning2 = loadImage("2.png");
+function setup() {
+  database=firebase.database();
+  createCanvas(1000,400);
+
+  foodObj = new Food();
+
+  foodStock=database.ref('Food');
+  foodStock.on("value",readStock);
+  
+  dog=createSprite(800,200,150,150);
+  dog.addImage(sadDog);
+  dog.scale=0.15;
+
+  //create feed the dog button here
+  feeddog = createButton("Feed the Dog");
+  feeddog.position(400,95);
+  feeddog.mousePressed(feedDog);
+
+
+  addFood=createButton("Add Food");
+  addFood.position(800,95);
+  addFood.mousePressed(addFoods);
 
 }
 
-function setup(){
-    createCanvas(400,700);
+function draw() {
+  background(46,139,87);
+  foodObj.display();
 
-    engine = Engine.create();
-    world = engine.world;
+  //write code to read fedtime value from the database
+  fedtime = database.ref('FeedTime');
+  fedtime.on("value",
+  function (data){
+    lastFed = data.val();
+  }) 
+  
+ 
+  //write code to display text lastFed time here
+  fill(0);
+  textSize(15);
+  if(lastFed<12){
+    text("Last feeding time is" + lastfed + "AM" , 350,30);
+  }
 
-    Walkingman = new Man (200,500);
+  else if(lastfed>12){
+    text("Last feeding time is" + lastfed + "PM" , 350,30);
+  }
 
-    if(frameCount % 150 === 0){
+  else if(lastfed===12){
+    text("Last feeding time is" + lastfed + "12 Noon" , 350,30);
+  }
 
-        for(var i=0; i<maxDrops; i++){
-            drops.push(new Drops(random(0,400), random(0,400)));
-        }
-
-    }
-
-   
-    
-   
+  else if(lastfed===0){
+    text("Last feeding time is " + lastfed + "12 AM" , 350 ,30); 
+  }
+ 
+  drawSprites();
 }
 
-function draw(){
+//function to read food Stock
+function readStock(data){
+  foodS=data.val();
+  foodObj.updateFoodStock(foodS);
+}
 
-    Engine.update(engine);
-    background(0); 
 
-    rand = Math.round(random(1,4));
+function feedDog(){
+  dog.addImage(happyDog);
 
-    if(frameCount%80===0){
-        lighningframe=frameCount;
-        lightning = createSprite(random(10,370), random(10,30), 10, 10);
-        switch(rand){
-            case 1: lightning.addImage(lightning1);
-            break;
-            case 2: lightning.addImage(lightning2);
-            break; 
-            default: break;
-        }
-        lightning.scale = random(0.3,0.6)
-    }
+  //write code here to update food stock and last fed time
+  database.ref('/').update({
+    Food : foodObj.getFoodStock(),
+    FeedTime : hour()
 
-    if(lightningframe + 10 ===frameCount && lightning){
-        lightning.destroy();
-    }
+  })
 
-    Walkingman.display();
+   var foodval = foodObj.getFoodStock();
+   if(foodval <= 0){
+     foodObj.updateFoodStock(foodval * 0);
 
-    for(var i = 0; i<maxDrops; i++){
-        drops[i].display();
-        drops[i].update()
-        
-    }
+  }
 
-    drawSprites();
-    
-}   
+  else {
+    foodObj.updateFoodStock(foodval - 1);
+  }
+
+}
+
+//function to add food in stock
+function addFoods(){
+  foodS++;
+  database.ref('/').update({
+    Food:foodS
+  })
+}
 
